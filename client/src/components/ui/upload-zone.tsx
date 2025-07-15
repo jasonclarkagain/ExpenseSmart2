@@ -1,45 +1,22 @@
-import { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
-import { Button } from "@/components/ui/button";
-import { CloudUpload, FileImage, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useDropzone } from 'react-dropzone';
+import { Upload, Image, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface UploadZoneProps {
   onFileUpload: (files: FileList) => void;
   isUploading?: boolean;
+  className?: string;
 }
 
-export function UploadZone({ onFileUpload, isUploading = false }: UploadZoneProps) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>("");
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-      setFileName(file.name);
-
-      // Create FileList-like object
-      const fileList = {
-        0: file,
-        length: 1,
-        item: (index: number) => index === 0 ? file : null,
-        [Symbol.iterator]: function* () {
-          yield file;
-        }
-      } as FileList;
-
-      onFileUpload(fileList);
-    }
-  }, [onFileUpload]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+export function UploadZone({ onFileUpload, isUploading = false, className }: UploadZoneProps) {
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        const fileList = new DataTransfer();
+        acceptedFiles.forEach(file => fileList.items.add(file));
+        onFileUpload(fileList.files);
+      }
+    },
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
     },
@@ -47,74 +24,63 @@ export function UploadZone({ onFileUpload, isUploading = false }: UploadZoneProp
     disabled: isUploading
   });
 
-  const clearPreview = () => {
-    setPreview(null);
-    setFileName("");
-  };
-
   return (
-    <div className="w-full">
+    <div className={cn("space-y-4", className)}>
       <div
         {...getRootProps()}
         className={cn(
-          "upload-zone",
-          isDragActive && "border-blue-400 bg-blue-50",
+          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+          isDragActive 
+            ? "border-blue-400 bg-blue-50 dark:bg-blue-950/50" 
+            : "border-slate-300 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800",
           isUploading && "opacity-50 cursor-not-allowed"
         )}
       >
         <input {...getInputProps()} />
         
-        {preview ? (
-          <div className="relative">
-            <img
-              src={preview}
-              alt="Preview"
-              className="max-h-64 mx-auto rounded-lg shadow-sm"
-            />
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <FileImage className="w-4 h-4 text-slate-500" />
-                <span className="text-sm text-slate-700 truncate">{fileName}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearPreview();
-                }}
-                disabled={isUploading}
-              >
-                <X className="w-4 h-4" />
-              </Button>
+        <div className="flex flex-col items-center gap-4">
+          {isUploading ? (
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          ) : (
+            <div className={cn(
+              "rounded-full p-3",
+              isDragActive ? "bg-blue-100 dark:bg-blue-900" : "bg-slate-100 dark:bg-slate-800"
+            )}>
+              {isDragActive ? (
+                <Upload className="h-6 w-6 text-blue-600" />
+              ) : (
+                <Image className="h-6 w-6 text-slate-600" />
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <CloudUpload className="w-12 h-12 text-slate-400" />
-            </div>
-            <div>
-              <p className="text-lg font-medium text-slate-900">
-                {isDragActive ? "Drop receipt here" : "Drop receipt images here"}
-              </p>
-              <p className="text-sm text-slate-600">or click to browse files</p>
-            </div>
-            <div className="flex justify-center">
-              <Button
-                type="button"
-                disabled={isUploading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isUploading ? "Processing..." : "Choose Files"}
-              </Button>
-            </div>
-            <p className="text-xs text-slate-500">
-              Supports JPG, PNG, GIF, WEBP • Max 10MB per file
+          )}
+          
+          <div>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              {isUploading 
+                ? "Processing receipt..." 
+                : isDragActive 
+                  ? "Drop the receipt here"
+                  : "Upload receipt image"
+              }
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {isUploading 
+                ? "AI is analyzing your receipt" 
+                : "PNG, JPG, GIF up to 10MB"
+              }
             </p>
           </div>
-        )}
+        </div>
       </div>
+
+      {fileRejections.length > 0 && (
+        <div className="flex items-center gap-2 text-red-600 text-sm">
+          <AlertCircle className="h-4 w-4" />
+          <span>
+            {fileRejections[0].errors[0].message}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

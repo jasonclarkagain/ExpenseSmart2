@@ -152,6 +152,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Categories routes
+  app.get('/api/categories', async (req, res) => {
+    try {
+      const activeOnly = req.query.active !== 'false';
+      const categories = await storage.getCategories(activeOnly);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  // Enhanced analytics routes
+  app.get('/api/analytics/expenses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { dateFrom, dateTo, groupBy } = req.query;
+      
+      const options: any = {};
+      if (dateFrom) options.dateFrom = new Date(dateFrom as string);
+      if (dateTo) options.dateTo = new Date(dateTo as string);
+      if (groupBy) options.groupBy = groupBy as string;
+      
+      const analytics = await storage.getExpenseAnalytics(userId, options);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching expense analytics:", error);
+      res.status(500).json({ message: "Failed to fetch expense analytics" });
+    }
+  });
+
+  app.get('/api/analytics/vendors', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const topVendors = await storage.getTopVendors(userId, limit);
+      res.json(topVendors);
+    } catch (error) {
+      console.error("Error fetching top vendors:", error);
+      res.status(500).json({ message: "Failed to fetch top vendors" });
+    }
+  });
+
+  app.get('/api/analytics/enhanced-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const enhancedStats = await storage.getUserStats(userId);
+      res.json(enhancedStats);
+    } catch (error) {
+      console.error("Error fetching enhanced stats:", error);
+      res.status(500).json({ message: "Failed to fetch enhanced stats" });
+    }
+  });
+
+  // Receipt items routes
+  app.get('/api/receipts/:id/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const receiptId = parseInt(req.params.id);
+      
+      const receipt = await storage.getReceiptWithItems(receiptId, userId);
+      if (!receipt) {
+        return res.status(404).json({ message: "Receipt not found" });
+      }
+      
+      res.json(receipt);
+    } catch (error) {
+      console.error("Error fetching receipt with items:", error);
+      res.status(500).json({ message: "Failed to fetch receipt with items" });
+    }
+  });
+
+  // User activity route
+  app.get('/api/activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const activity = await storage.getUserActivity(userId, limit);
+      res.json(activity);
+    } catch (error) {
+      console.error("Error fetching user activity:", error);
+      res.status(500).json({ message: "Failed to fetch user activity" });
+    }
+  });
+
+  // Subscription plans route
+  app.get('/api/subscription-plans', async (req, res) => {
+    try {
+      const activeOnly = req.query.active !== 'false';
+      const plans = await storage.getSubscriptionPlans(activeOnly);
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  // Bulk operations
+  app.delete('/api/receipts/bulk', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ids } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid receipt IDs provided" });
+      }
+      
+      await storage.bulkDeleteReceipts(ids, userId);
+      res.json({ message: `Successfully deleted ${ids.length} receipts` });
+    } catch (error) {
+      console.error("Error bulk deleting receipts:", error);
+      res.status(500).json({ message: "Failed to bulk delete receipts" });
+    }
+  });
+
+  // Enhanced receipts search route
+  app.get('/api/receipts/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const {
+        limit = 50,
+        offset = 0,
+        category,
+        vendor,
+        dateFrom,
+        dateTo,
+        minAmount,
+        maxAmount,
+        status,
+        search
+      } = req.query;
+
+      const options: any = {
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      };
+
+      if (category) options.category = category as string;
+      if (vendor) options.vendor = vendor as string;
+      if (dateFrom) options.dateFrom = new Date(dateFrom as string);
+      if (dateTo) options.dateTo = new Date(dateTo as string);
+      if (minAmount) options.minAmount = parseFloat(minAmount as string);
+      if (maxAmount) options.maxAmount = parseFloat(maxAmount as string);
+      if (status) options.status = status as string;
+      if (search) options.search = search as string;
+
+      const receipts = await storage.getReceipts(userId, options);
+      res.json(receipts);
+    } catch (error) {
+      console.error("Error searching receipts:", error);
+      res.status(500).json({ message: "Failed to search receipts" });
+    }
+  });
+
   // CSV export route
   app.get('/api/export/csv', isAuthenticated, async (req: any, res) => {
     try {

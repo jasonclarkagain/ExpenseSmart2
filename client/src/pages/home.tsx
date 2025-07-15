@@ -37,6 +37,7 @@ import { StatsCard } from "@/components/ui/stats-card";
 import { ReceiptCard } from "@/components/ui/receipt-card";
 import { CategoryCard } from "@/components/ui/category-card";
 import { EditReceiptModal } from "@/components/ui/edit-receipt-modal";
+import { EnhancedStatsDashboard } from "@/components/ui/enhanced-stats-dashboard";
 
 const categoryIcons = {
   meals: Utensils,
@@ -268,36 +269,13 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatsCard
-            title="Total Receipts"
-            value={stats?.totalReceipts || 0}
-            icon={Receipt}
-            color="blue"
-            isLoading={statsLoading}
-          />
-          <StatsCard
-            title="Total Expenses"
-            value={`$${parseFloat(stats?.totalAmount || "0").toLocaleString()}`}
-            icon={DollarSign}
-            color="emerald"
-            isLoading={statsLoading}
-          />
-          <StatsCard
-            title="This Month"
-            value={`$${parseFloat(stats?.thisMonth || "0").toLocaleString()}`}
-            icon={Clock}
-            color="amber"
-            isLoading={statsLoading}
-          />
-          <StatsCard
-            title="Categories"
-            value={stats?.categories || 0}
-            icon={Tags}
-            color="purple"
-            isLoading={statsLoading}
-          />
+        {/* Enhanced Stats Dashboard */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Dashboard Overview</h2>
+            <p className="text-slate-600">Comprehensive analytics powered by our robust database architecture</p>
+          </div>
+          <EnhancedStatsDashboard />
         </div>
 
         {/* Upload Section */}

@@ -109,3 +109,28 @@ Subscription pricing: $7.99/month for Pro plan (updated from $19/month)
 - **Problem**: Consistent design system and reusable components
 - **Solution**: Radix UI primitives with Tailwind styling
 - **Benefits**: Accessibility built-in, consistent styling, rapid development
+
+## Recent Changes
+
+### July 15, 2025 - Enhanced Database Architecture
+- **Enhanced Database Schema**: Added comprehensive validation, indexing, and constraints
+- **Receipt Items Table**: New table for detailed line-item tracking per receipt
+- **User Activity Log**: Added audit trail for all user actions and system events
+- **Subscription Plans**: New table for managing subscription tiers and features
+- **Enhanced Categories**: Added display names, descriptions, and active status flags
+- **Performance Optimizations**: Added strategic database indexes for faster queries
+- **Data Validation**: Implemented check constraints for data integrity
+- **Error Handling**: Enhanced storage layer with comprehensive try-catch blocks
+- **Activity Logging**: Automatic logging of user actions for analytics and debugging
+- **Advanced Analytics**: Added support for expense analytics, top vendors, and trend analysis
+- **Bulk Operations**: Added support for bulk receipt deletion and management
+- **Search and Filtering**: Enhanced receipt queries with full-text search and filters
+
+#### Database Schema Enhancements:
+- **Receipts Table**: Added 11 new fields including confidence scores, verification status, tags, payment details
+- **Categories Table**: Enhanced with display names, descriptions, sort order, and active status
+- **Receipt Items Table**: New table for tracking individual items within receipts
+- **User Activity Log**: Complete audit trail for user actions and system events
+- **Subscription Plans**: Structured plan management with features and pricing
+- **Performance Indexes**: Strategic indexing on high-query fields for optimal performance
+- **Data Integrity**: Check constraints ensuring valid amounts, confidence scores, and quantities
