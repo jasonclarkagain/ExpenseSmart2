@@ -7,6 +7,7 @@ ExpenseAI is a full-stack receipt management application that uses AI to analyze
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Subscription pricing: $7.99/month for Pro plan (updated from $19/month)
 
 ## System Architecture
 

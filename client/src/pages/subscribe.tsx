@@ -64,7 +64,7 @@ const SubscribeForm = () => {
           <div className="bg-slate-50 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="font-medium">ExpenseAI Pro</span>
-              <span className="text-xl font-bold">$19/month</span>
+              <span className="text-xl font-bold">$7.99/month</span>
             </div>
             <ul className="text-sm text-slate-600 space-y-1">
               <li>• Unlimited receipt processing</li>

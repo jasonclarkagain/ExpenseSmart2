@@ -174,7 +174,7 @@ export default function Landing() {
                 </CardTitle>
                 <CardDescription>For serious expense management</CardDescription>
                 <div className="text-3xl font-bold text-slate-900 mt-4">
-                  $19<span className="text-lg font-normal text-slate-600">/month</span>
+                  $7.99<span className="text-lg font-normal text-slate-600">/month</span>
                 </div>
               </CardHeader>
               <CardContent>
