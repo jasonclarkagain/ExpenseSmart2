@@ -38,6 +38,7 @@ import { ReceiptCard } from "@/components/ui/receipt-card";
 import { CategoryCard } from "@/components/ui/category-card";
 import { EditReceiptModal } from "@/components/ui/edit-receipt-modal";
 import { EnhancedStatsDashboard } from "@/components/ui/enhanced-stats-dashboard";
+import { Link } from "wouter";
 
 const categoryIcons = {
   meals: Utensils,
@@ -235,7 +236,9 @@ export default function Home() {
             </div>
             <nav className="hidden md:flex space-x-8">
               <a href="#" className="text-blue-600 px-3 py-2 text-sm font-medium">Dashboard</a>
-              <a href="#" className="text-slate-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">Analytics</a>
+              <Link href="/pricing" className="text-slate-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
+                Pricing
+              </Link>
               <a href="#" className="text-slate-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">Export</a>
             </nav>
             <div className="flex items-center space-x-4">

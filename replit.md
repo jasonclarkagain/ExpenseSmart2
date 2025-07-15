@@ -7,7 +7,15 @@ ExpenseAI is a full-stack receipt management application that uses AI to analyze
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
-Subscription pricing: $7.99/month for Pro plan (updated from $19/month)
+Subscription pricing: Multiple tiers with discounts for longer commitments:
+- Free: $0/month (10 receipts)
+- Pro Monthly: $7.99/month
+- Pro 3-Month: $22.77 (5% discount)
+- Pro 6-Month: $43.14 (10% discount) 
+- Pro Annual: $81.49 (15% discount)
+- Pro 3-Year: $215.73 (25% discount)
+- Pro 5-Year: $311.61 (35% discount)
+- Pro Lifetime: $959.52 (50% discount, 20-year equivalent)
 
 ## System Architecture
 
@@ -134,3 +142,12 @@ Subscription pricing: $7.99/month for Pro plan (updated from $19/month)
 - **Subscription Plans**: Structured plan management with features and pricing
 - **Performance Indexes**: Strategic indexing on high-query fields for optimal performance
 - **Data Integrity**: Check constraints ensuring valid amounts, confidence scores, and quantities
+
+### July 15, 2025 - Comprehensive Subscription Pricing System
+- **Multi-Tier Pricing**: Implemented 8 subscription plans with progressive discounts
+- **Discount Structure**: 5% to 50% savings for longer commitments (3 months to lifetime)
+- **Pricing Strategy**: Monthly ($7.99) to Lifetime ($959.52) with clear value propositions
+- **Enhanced UI**: Created comprehensive pricing page with plan comparisons and FAQ
+- **Database Integration**: Updated subscription plans table with detailed features and savings calculations
+- **User Experience**: Added pricing navigation, plan badges, and discount highlighting
+- **Business Model**: Optimized for customer retention through commitment-based discounts
