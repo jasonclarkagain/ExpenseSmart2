@@ -66,6 +66,23 @@ const upload = multer({
   }
 });
 
+// Admin middleware
+const isAdmin = async (req: any, res: any, next: any) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const userId = req.user.claims.sub;
+  const user = await storage.getUser(userId);
+  
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+
+  req.adminUser = user;
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -682,6 +699,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error getting subscription status:', error);
       res.status(500).json({ message: 'Failed to get subscription status' });
+    }
+  });
+
+  // Admin routes
+  app.get('/api/admin/users', isAdmin, async (req: any, res) => {
+    try {
+      const { limit, offset, role } = req.query;
+      const options: any = {};
+      
+      if (limit) options.limit = parseInt(limit as string);
+      if (offset) options.offset = parseInt(offset as string);
+      if (role) options.role = role as string;
+      
+      const users = await storage.getAllUsers(options);
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users for admin:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.get('/api/admin/stats', isAdmin, async (req: any, res) => {
+    try {
+      const stats = await storage.getSystemStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching system stats:", error);
+      res.status(500).json({ message: "Failed to fetch system stats" });
+    }
+  });
+
+  app.put('/api/admin/users/:id/role', isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { role, permissions } = req.body;
+      
+      if (!role || !Array.isArray(permissions)) {
+        return res.status(400).json({ message: "Role and permissions are required" });
+      }
+      
+      const updatedUser = await storage.updateUserRole(id, role, permissions);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
     }
   });
 

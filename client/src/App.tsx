@@ -11,6 +11,7 @@ import Subscribe from "@/pages/subscribe";
 import Pricing from "@/pages/pricing";
 import Checkout from "@/pages/checkout";
 import CheckoutSuccess from "@/pages/checkout-success";
+import Admin from "@/pages/admin";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -30,6 +31,7 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/checkout/:planId" component={Checkout} />
           <Route path="/checkout/success" component={CheckoutSuccess} />
+          <Route path="/admin" component={Admin} />
           <Route component={NotFound} />
         </>
       )}

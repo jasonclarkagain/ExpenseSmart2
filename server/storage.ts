@@ -26,6 +26,18 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User>;
   updateUserLastLogin(userId: string): Promise<void>;
+  
+  // Admin operations
+  getAllUsers(options?: { limit?: number; offset?: number; role?: string }): Promise<User[]>;
+  updateUserRole(userId: string, role: string, permissions: string[]): Promise<User>;
+  getSystemStats(): Promise<{
+    totalUsers: number;
+    totalReceipts: number;
+    totalRevenue: string;
+    activeSubscriptions: number;
+    monthlyReceipts: number;
+    weeklySignups: number;
+  }>;
   getUserStats(userId: string): Promise<{
     totalReceipts: number;
     totalAmount: string;
@@ -459,35 +471,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Category operations
-  async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories);
-  }
-
-  async getCategoryBreakdown(userId: string): Promise<Array<{
-    category: string;
-    count: number;
-    total: string;
-    percentage: number;
-  }>> {
-    const breakdown = await db
-      .select({
-        category: receipts.category,
-        count: sql<number>`count(*)::int`,
-        total: sql<string>`sum(${receipts.amount})::text`,
-      })
-      .from(receipts)
-      .where(eq(receipts.userId, userId))
-      .groupBy(receipts.category);
-
-    // Calculate percentages
-    const totalAmount = breakdown.reduce((sum, item) => sum + parseFloat(item.total), 0);
-    
-    return breakdown.map(item => ({
-      ...item,
-      percentage: totalAmount > 0 ? Math.round((parseFloat(item.total) / totalAmount) * 100) : 0,
-    }));
-  }
+  // Category operations (simplified version removed, using enhanced version below)
 
   async getReceiptWithItems(id: number, userId: string): Promise<Receipt & { items: ReceiptItem[] } | undefined> {
     try {
@@ -770,6 +754,102 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error fetching top vendors:", error);
       throw new Error("Failed to fetch top vendors");
+    }
+  }
+
+  // Admin operations
+  async getAllUsers(options: { limit?: number; offset?: number; role?: string } = {}): Promise<User[]> {
+    try {
+      const { limit = 50, offset = 0, role } = options;
+      let query = db.select().from(users);
+      
+      if (role) {
+        query = query.where(eq(users.role, role));
+      }
+      
+      return await query
+        .orderBy(desc(users.createdAt))
+        .limit(limit)
+        .offset(offset);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      throw new Error("Failed to fetch users");
+    }
+  }
+
+  async updateUserRole(userId: string, role: string, permissions: string[]): Promise<User> {
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ 
+          role, 
+          permissions,
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      throw new Error("Failed to update user role");
+    }
+  }
+
+  async getSystemStats(): Promise<{
+    totalUsers: number;
+    totalReceipts: number;
+    totalRevenue: string;
+    activeSubscriptions: number;
+    monthlyReceipts: number;
+    weeklySignups: number;
+  }> {
+    try {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // Get total users
+      const [totalUsersResult] = await db
+        .select({ count: count() })
+        .from(users);
+
+      // Get total receipts
+      const [totalReceiptsResult] = await db
+        .select({ count: count() })
+        .from(receipts);
+
+      // Get active subscriptions
+      const [activeSubsResult] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(eq(users.subscriptionStatus, 'active'));
+
+      // Get monthly receipts
+      const [monthlyReceiptsResult] = await db
+        .select({ count: count() })
+        .from(receipts)
+        .where(gte(receipts.createdAt, monthStart));
+
+      // Get weekly signups
+      const [weeklySignupsResult] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(gte(users.createdAt, weekStart));
+
+      // Calculate total revenue (mock for now, would need payment records)
+      const totalRevenue = "0.00";
+
+      return {
+        totalUsers: totalUsersResult.count,
+        totalReceipts: totalReceiptsResult.count,
+        totalRevenue,
+        activeSubscriptions: activeSubsResult.count,
+        monthlyReceipts: monthlyReceiptsResult.count,
+        weeklySignups: weeklySignupsResult.count,
+      };
+    } catch (error) {
+      console.error("Error fetching system stats:", error);
+      throw new Error("Failed to fetch system stats");
     }
   }
 }

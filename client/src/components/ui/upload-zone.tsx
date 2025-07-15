@@ -1,84 +1,76 @@
-import { useDropzone } from 'react-dropzone';
-import { Upload, Image, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { Upload, FileImage, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface UploadZoneProps {
-  onFileUpload: (files: FileList) => void;
-  isUploading?: boolean;
+  onFilesSelected: (files: FileList) => void;
   className?: string;
+  disabled?: boolean;
 }
 
-export function UploadZone({ onFileUpload, isUploading = false, className }: UploadZoneProps) {
-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        const fileList = new DataTransfer();
-        acceptedFiles.forEach(file => fileList.items.add(file));
-        onFileUpload(fileList.files);
-      }
-    },
+export function UploadZone({ onFilesSelected, className, disabled }: UploadZoneProps) {
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      const fileList = new DataTransfer();
+      acceptedFiles.forEach(file => fileList.items.add(file));
+      onFilesSelected(fileList.files);
+    }
+  }, [onFilesSelected]);
+
+  const { getRootProps, getInputProps, isDragActive, acceptedFiles } = useDropzone({
+    onDrop,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
     },
-    maxFiles: 1,
-    disabled: isUploading
+    multiple: true,
+    disabled
   });
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <div
-        {...getRootProps()}
-        className={cn(
-          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
-          isDragActive 
-            ? "border-blue-400 bg-blue-50 dark:bg-blue-950/50" 
-            : "border-slate-300 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800",
-          isUploading && "opacity-50 cursor-not-allowed"
-        )}
-      >
-        <input {...getInputProps()} />
-        
-        <div className="flex flex-col items-center gap-4">
-          {isUploading ? (
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          ) : (
-            <div className={cn(
-              "rounded-full p-3",
-              isDragActive ? "bg-blue-100 dark:bg-blue-900" : "bg-slate-100 dark:bg-slate-800"
-            )}>
-              {isDragActive ? (
-                <Upload className="h-6 w-6 text-blue-600" />
-              ) : (
-                <Image className="h-6 w-6 text-slate-600" />
-              )}
+    <div
+      {...getRootProps()}
+      className={cn(
+        "border-2 border-dashed border-slate-300 rounded-lg p-8 text-center cursor-pointer transition-colors",
+        isDragActive && "border-blue-500 bg-blue-50",
+        disabled && "opacity-50 cursor-not-allowed",
+        className
+      )}
+    >
+      <input {...getInputProps()} />
+      <div className="flex flex-col items-center gap-3">
+        {isDragActive ? (
+          <>
+            <FileImage className="w-12 h-12 text-blue-500" />
+            <p className="text-blue-600 font-medium">Drop receipt images here</p>
+          </>
+        ) : (
+          <>
+            <Upload className="w-12 h-12 text-slate-400" />
+            <div>
+              <p className="text-slate-600 font-medium mb-1">
+                Drag & drop receipt images here, or click to select
+              </p>
+              <p className="text-sm text-slate-500">
+                Supports PNG, JPG, JPEG, GIF, WebP (max 10MB each)
+              </p>
             </div>
-          )}
-          
-          <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {isUploading 
-                ? "Processing receipt..." 
-                : isDragActive 
-                  ? "Drop the receipt here"
-                  : "Upload receipt image"
-              }
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {isUploading 
-                ? "AI is analyzing your receipt" 
-                : "PNG, JPG, GIF up to 10MB"
-              }
-            </p>
-          </div>
-        </div>
+          </>
+        )}
       </div>
-
-      {fileRejections.length > 0 && (
-        <div className="flex items-center gap-2 text-red-600 text-sm">
-          <AlertCircle className="h-4 w-4" />
-          <span>
-            {fileRejections[0].errors[0].message}
-          </span>
+      
+      {acceptedFiles.length > 0 && (
+        <div className="mt-4 text-left">
+          <p className="text-sm font-medium text-slate-700 mb-2">Selected files:</p>
+          <ul className="space-y-1">
+            {acceptedFiles.map((file, index) => (
+              <li key={index} className="flex items-center gap-2 text-sm text-slate-600">
+                <FileImage className="w-4 h-4" />
+                <span>{file.name}</span>
+                <span className="text-slate-400">({Math.round(file.size / 1024)} KB)</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

@@ -412,6 +412,24 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
+
+        {/* Footer */}
+        <footer className="mt-16 py-8 border-t border-slate-200">
+          <div className="text-center text-sm text-slate-600">
+            <p>
+              Made with ❤️ by{' '}
+              <a 
+                href="https://jason-clark.org" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Jason Clark
+              </a>
+              {' '}© 2025
+            </p>
+          </div>
+        </footer>
       </main>
 
       {/* Edit Receipt Modal */}
