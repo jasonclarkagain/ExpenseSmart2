@@ -9,6 +9,8 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Subscribe from "@/pages/subscribe";
 import Pricing from "@/pages/pricing";
+import Checkout from "@/pages/checkout";
+import CheckoutSuccess from "@/pages/checkout-success";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,6 +28,8 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/pricing" component={Pricing} />
+          <Route path="/checkout/:planId" component={Checkout} />
+          <Route path="/checkout/success" component={CheckoutSuccess} />
           <Route component={NotFound} />
         </>
       )}

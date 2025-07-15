@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -14,6 +15,41 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
+
+// Helper functions for Stripe billing periods
+function getStripeInterval(billingPeriod: string): 'day' | 'week' | 'month' | 'year' {
+  switch (billingPeriod) {
+    case 'monthly':
+    case 'quarterly':
+    case 'semi-annual':
+      return 'month';
+    case 'yearly':
+    case 'triennial':
+    case 'quinquennial':
+      return 'year';
+    default:
+      return 'month';
+  }
+}
+
+function getIntervalCount(billingPeriod: string): number {
+  switch (billingPeriod) {
+    case 'monthly':
+      return 1;
+    case 'quarterly':
+      return 3;
+    case 'semi-annual':
+      return 6;
+    case 'yearly':
+      return 1;
+    case 'triennial':
+      return 3;
+    case 'quinquennial':
+      return 5;
+    default:
+      return 1;
+  }
+}
 
 // Configure multer for file uploads
 const upload = multer({
@@ -323,7 +359,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe subscription route
+  // Enhanced Stripe subscription routes for multiple plans
+  app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { planId } = req.body;
+      
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+      
+      let user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get the subscription plan
+      const plan = await storage.getSubscriptionPlanById(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Subscription plan not found" });
+      }
+
+      // Handle free plan
+      if (plan.name === 'free') {
+        return res.json({ 
+          message: "Free plan activated",
+          plan: plan.name,
+          status: "active"
+        });
+      }
+
+      // Check if user already has an active subscription
+      if (user.stripeSubscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        if (subscription.status === 'active') {
+          return res.json({
+            subscriptionId: subscription.id,
+            clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
+            status: subscription.status
+          });
+        }
+      }
+
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email || '',
+          name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || '',
+          metadata: {
+            userId: userId,
+            planName: plan.name
+          }
+        });
+        customerId = customer.id;
+        await storage.updateUserStripeInfo(userId, customerId, '');
+      }
+
+      // Handle one-time payments (lifetime)
+      if (plan.billingPeriod === 'lifetime') {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(parseFloat(plan.price) * 100),
+          currency: plan.currency.toLowerCase(),
+          customer: customerId,
+          automatic_payment_methods: {
+            enabled: true,
+          },
+          metadata: {
+            userId: userId,
+            planId: planId.toString(),
+            planName: plan.name,
+            type: 'lifetime'
+          }
+        });
+
+        return res.json({
+          clientSecret: paymentIntent.client_secret,
+          type: 'payment_intent',
+          planName: plan.name
+        });
+      }
+
+      // Create recurring subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{
+          price_data: {
+            currency: plan.currency.toLowerCase(),
+            product_data: {
+              name: plan.displayName,
+              description: `${plan.displayName} - ${plan.features.features.join(', ')}`
+            },
+            unit_amount: Math.round(parseFloat(plan.price) * 100),
+            recurring: {
+              interval: getStripeInterval(plan.billingPeriod),
+              interval_count: getIntervalCount(plan.billingPeriod)
+            }
+          }
+        }],
+        payment_behavior: 'default_incomplete',
+        expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          userId: userId,
+          planId: planId.toString(),
+          planName: plan.name
+        }
+      });
+
+      // Update user with subscription info
+      await storage.updateUserStripeInfo(userId, customerId, subscription.id);
+
+      // Log user activity
+      await storage.logUserActivity({
+        userId: userId,
+        action: 'subscription_created',
+        details: `Created subscription for ${plan.displayName}`,
+        metadata: { planId, subscriptionId: subscription.id }
+      });
+
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
+        type: 'subscription',
+        planName: plan.name
+      });
+    } catch (error: any) {
+      console.error("Error creating subscription:", error);
+      res.status(400).json({ error: { message: error.message } });
+    }
+  });
+
+  // Legacy route for backward compatibility
   app.post('/api/get-or-create-subscription', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -387,6 +553,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Subscription creation error:", error);
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Stripe webhook endpoint for handling payment events
+  app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!endpointSecret) {
+      console.log('Stripe webhook secret not configured');
+      return res.status(400).send('Webhook secret not configured');
+    }
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig as string, endpointSecret);
+    } catch (err: any) {
+      console.log(`Webhook signature verification failed.`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    try {
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          const userId = paymentIntent.metadata?.userId;
+          const planName = paymentIntent.metadata?.planName;
+          
+          if (userId && planName) {
+            await storage.logUserActivity({
+              userId,
+              action: 'payment_completed',
+              details: `Payment completed for ${planName} plan`,
+              metadata: { 
+                paymentIntentId: paymentIntent.id,
+                amount: paymentIntent.amount,
+                planName 
+              }
+            });
+            console.log(`Payment succeeded for user ${userId}, plan ${planName}`);
+          }
+          break;
+
+        case 'invoice.payment_succeeded':
+          const invoice = event.data.object;
+          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+          const subUserId = subscription.metadata?.userId;
+          const subPlanName = subscription.metadata?.planName;
+          
+          if (subUserId && subPlanName) {
+            await storage.logUserActivity({
+              userId: subUserId,
+              action: 'subscription_payment_succeeded',
+              details: `Subscription payment succeeded for ${subPlanName} plan`,
+              metadata: { 
+                subscriptionId: subscription.id,
+                invoiceId: invoice.id,
+                amount: invoice.amount_paid,
+                planName: subPlanName 
+              }
+            });
+            console.log(`Subscription payment succeeded for user ${subUserId}, plan ${subPlanName}`);
+          }
+          break;
+
+        case 'customer.subscription.deleted':
+          const deletedSub = event.data.object;
+          const delUserId = deletedSub.metadata?.userId;
+          
+          if (delUserId) {
+            await storage.updateUserStripeInfo(delUserId, '', '');
+            await storage.logUserActivity({
+              userId: delUserId,
+              action: 'subscription_cancelled',
+              details: 'Subscription cancelled',
+              metadata: { subscriptionId: deletedSub.id }
+            });
+            console.log(`Subscription cancelled for user ${delUserId}`);
+          }
+          break;
+
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Error handling webhook:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Route to get user's current subscription status
+  app.get('/api/subscription/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      let subscriptionStatus = {
+        hasActiveSubscription: false,
+        plan: 'free',
+        status: 'inactive',
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false
+      };
+
+      if (user.stripeSubscriptionId) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          subscriptionStatus = {
+            hasActiveSubscription: subscription.status === 'active',
+            plan: subscription.metadata?.planName || 'unknown',
+            status: subscription.status,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end
+          };
+        } catch (stripeError) {
+          console.error('Error retrieving subscription from Stripe:', stripeError);
+        }
+      }
+
+      res.json(subscriptionStatus);
+    } catch (error: any) {
+      console.error('Error getting subscription status:', error);
+      res.status(500).json({ message: 'Failed to get subscription status' });
     }
   });
 

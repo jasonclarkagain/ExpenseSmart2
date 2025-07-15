@@ -208,6 +208,24 @@ export default function Pricing() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Footer */}
+        <footer className="mt-16 py-8 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+            <p>
+              Made with ❤️ by{' '}
+              <a 
+                href="https://jason-clark.org" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+              >
+                Jason Clark
+              </a>
+              {' '}© 2025
+            </p>
+          </div>
+        </footer>
       </main>
     </div>
   );

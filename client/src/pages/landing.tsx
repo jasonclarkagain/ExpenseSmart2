@@ -221,7 +221,16 @@ export default function Landing() {
               <span className="text-lg font-semibold">ExpenseAI</span>
             </div>
             <div className="text-slate-400">
-              © 2024 ExpenseAI. All rights reserved.
+              Made with ❤️ by{' '}
+              <a 
+                href="https://jason-clark.org" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 hover:underline"
+              >
+                Jason Clark
+              </a>
+              {' '}© 2025
             </div>
           </div>
         </div>

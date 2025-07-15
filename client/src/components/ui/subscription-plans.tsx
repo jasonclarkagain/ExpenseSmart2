@@ -5,6 +5,7 @@ import { Badge } from "./badge";
 import { Skeleton } from "./skeleton";
 import { Check, Star, Crown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "wouter";
 
 interface SubscriptionPlan {
   id: number;
@@ -184,17 +185,27 @@ export function SubscriptionPlans() {
                   </div>
                 )}
 
-                <Button 
-                  className={cn(
-                    "w-full",
-                    variant === 'premium' && "bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700",
-                    variant === 'popular' && "bg-blue-600 hover:bg-blue-700",
-                    plan.name === 'free' && "bg-gray-600 hover:bg-gray-700"
-                  )}
-                  disabled={plan.name === 'free'}
-                >
-                  {plan.name === 'free' ? 'Current Plan' : 'Choose Plan'}
-                </Button>
+                {plan.name === 'free' ? (
+                  <Button 
+                    className="w-full bg-gray-600 hover:bg-gray-700"
+                    disabled={true}
+                  >
+                    Current Plan
+                  </Button>
+                ) : (
+                  <Button 
+                    className={cn(
+                      "w-full",
+                      variant === 'premium' && "bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700",
+                      variant === 'popular' && "bg-blue-600 hover:bg-blue-700"
+                    )}
+                    asChild
+                  >
+                    <Link href={`/checkout/${plan.id}`}>
+                      Get Started
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );
